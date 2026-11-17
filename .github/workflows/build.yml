@@ -1,0 +1,44 @@
+name: Build INJHook
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    # Pinned to VS 2022 (toolset v143). windows-latest now uses VS 2026.
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Show project files and solution configurations
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse -Include *.sln,*.vcxproj | ForEach-Object { $_.FullName }
+          Select-String -Path INJHook.sln -Pattern 'Release\|' | Select-Object -First 10 | ForEach-Object { $_.Line }
+
+      - name: Build
+        shell: pwsh
+        run: >
+          msbuild INJHook.sln /m
+          /p:Configuration=Release
+          /p:Platform=x86
+          /p:PlatformToolset=v143
+          /p:WindowsTargetPlatformVersion=10.0
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: INJHook-build
+          path: |
+            **/*.asi
+            **/Release/**/*.dll
+          if-no-files-found: error
